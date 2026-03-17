@@ -33,4 +33,8 @@ RUN rm -rf vendor composer.lock && \
     git config --global --add safe.directory /var/www/html && \
     composer install --no-dev --optimize-autoloader
 
+# Права на запись для storage и bootstrap/cache
+RUN chown -R www:www /var/www/html/storage /var/www/html/bootstrap/cache && \
+    chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
 USER www
