@@ -19,8 +19,6 @@ RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Установка Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-sh 'docker compose exec app git config --global --add safe.directory /var/www/html'
-sh 'docker compose exec app composer install --no-dev --optimize-autoloader'
 # Создание пользователя для приложения
 RUN groupadd -g 1000 www
 RUN useradd -u 1000 -ms /bin/bash -g www www
