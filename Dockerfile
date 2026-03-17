@@ -1,6 +1,6 @@
 FROM php:8.2-fpm
 
-# Установка системных зависимостей
+# Установка зависимостей
 RUN apt-get update && apt-get install -y \
     git \
     curl \
@@ -11,30 +11,26 @@ RUN apt-get update && apt-get install -y \
     unzip \
     libzip-dev
 
-# Очистка кеша
+# Очистка
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Установка PHP расширений
+# Установка расширений PHP
 RUN docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Установка Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
-# Создание пользователя для приложения
+
+# Создание пользователя
 RUN groupadd -g 1000 www
 RUN useradd -u 1000 -ms /bin/bash -g www www
 
-# Копирование кода приложения
-COPY . /var/www/html
-
-# Копирование существующих прав доступа к приложению
+# Копирование файлов приложения
 COPY --chown=www:www . /var/www/html
-RUN git config --global --add safe.directory /var/www/html
-# Смена пользователя
-USER www
 
-# Рабочая директория
+# Установка зависимостей и настройка Git
 WORKDIR /var/www/html
+RUN rm -rf vendor composer.lock && \
+    git config --global --add safe.directory /var/www/html && \
+    composer install --no-dev --optimize-autoloader
 
-# Expose port 9000 and start php-fpm server
-EXPOSE 9000
-CMD ["php-fpm"]
+USER www
