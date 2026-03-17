@@ -79,30 +79,30 @@ pipeline {
             }
         }
 
-        stage('Deploy to Production') {
-            steps {
-                script {
-                    // Останавливаем и удаляем старые контейнеры
-                    sh '''
-                    docker compose down --volumes --remove-orphans || true
-                    '''
+      stage('Deploy to Production') {
+    steps {
+        script {
+            sh 'docker compose down --volumes --remove-orphans' // Осторожно: это удаляет данные БД если она в volume!
+            sh 'docker compose up -d --build'
+            sh 'sudo chown -R 1000:1000 ./storage ./bootstrap/cache' // 1000 - это UID пользователя www
+            
+            // ДОБАВЬТЕ ЭТУ СТРОКУ: Исправляем права внутри запущенного контейнера
+            // Мы меняем владельца storage и базы данных на пользователя www (uid 1000)
+            sh '''
+                docker compose exec -u root app chown -R www:www /var/www/html/storage
+                docker compose exec -u root app chmod -R 775 /var/www/html/storage
+                // Если используется sqlite база в папке database, тоже исправим права
+                if [ -d /var/www/html/database ]; then
+                    docker compose exec -u root app chown -R www:www /var/www/html/database
+                fi
+            '''
 
-                    // Запускаем новые контейнеры
-                    sh '''
-                    docker compose up -d --build
-                    '''
-
-                    // Выполняем миграции и оптимизацию
-                    sh '''
-                    docker compose exec app php artisan optimize:clear
-                    docker compose exec app php artisan optimize
-                    docker compose exec app php artisan migrate --force
-                    '''
-                }
-            }
+            // Теперь можно безопасно запускать оптимизацию
+            sh 'docker compose exec app php artisan optimize:clear'
+            sh 'docker compose exec app php artisan migrate --force'
         }
     }
-
+}
     post {
         success {
             echo ' Laravel application deployed successfully!'
