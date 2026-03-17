@@ -79,27 +79,31 @@ pipeline {
             }
         }
 
-       stage('Deploy to Production') {
-    steps {
-        script {
-            sh 'docker compose down --volumes --remove-orphans'
-            sh 'docker compose up -d --build'
-            
-            // Ждем пока контейнеры полностью запустятся
-            sleep 5
-            
-            // Настраиваем Git от root (не обязательно, но пусть будет)
-            sh 'docker compose exec app git config --global --add safe.directory /var/www/html'
-            
-            // Удаляем старый vendor и ставим зависимости от пользователя www
-            sh 'docker compose exec app rm -rf vendor composer.lock'
-            sh 'docker compose exec -u www app composer install --no-dev --optimize-autoloader'
-            
-            // Миграции
-            sh 'docker compose exec app php artisan migrate --force'
+        stage('Deploy to Production') {
+            steps {
+                script {
+                    // Останавливаем и удаляем старые контейнеры
+                    sh '''
+                    docker compose down --volumes --remove-orphans || true
+                    '''
+
+                    // Запускаем новые контейнеры
+                    sh '''
+                    docker compose up -d --build
+                    '''
+
+                    // Выполняем миграции и оптимизацию
+                    sh '''
+                    docker compose exec app git config --global --add safe.directory /var/www/html
+                    docker compose exec -u www app composer install --no-dev --optimize-autoloader
+                    docker compose exec app php artisan optimize:clear
+                    docker compose exec app php artisan optimize
+                    docker compose exec app php artisan migrate --force
+                    '''
+                }
+            }
         }
     }
-}
 
     post {
         success {
