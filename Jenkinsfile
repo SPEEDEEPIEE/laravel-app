@@ -10,7 +10,7 @@ pipeline {
     stages {
         stage('Checkout Code') {
             steps {
-                git branch: 'main', 
+                git branch: 'master', 
                 url: 'https://github.com/SPEEDEEPIEE/laravel-app.git'
                 // credentialsId: 'your-git-credentials'
             }
